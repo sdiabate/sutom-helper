@@ -1,12 +1,14 @@
 package com.sdi.sutom.helper;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.Normalizer;
 import java.util.*;
 
 import static java.util.List.of;
+import static java.util.Objects.requireNonNull;
 
 public class SutomService {
 
@@ -18,15 +20,15 @@ public class SutomService {
     }
 
     public void extractSingleWords() {
-        try (final var lines = Files.lines(Paths.get("D:\\dictionary.csv"))) {
+        try (final var lines = Files.lines(Paths.get(requireNonNull(getClass().getClassLoader().getResource("dictionary.csv")).toURI()))) {
             final var data = lines.filter(line -> !line.contains("['plural']"))
                     .map(line -> line.split(",")[1])
                     .filter(sentence -> !sentence.contains(" "))
                     .distinct()
                     .map(word -> Normalizer.normalize(word, Normalizer.Form.NFD).replaceAll("[^\\p{ASCII}]", "").toUpperCase())
                     .toList();
-            Files.write(Paths.get("D:\\noun.txt"), data);
-        } catch (final IOException e) {
+            Files.write(Paths.get(requireNonNull(getClass().getClassLoader().getResource("dictionary.txt")).toURI()), data);
+        } catch (final IOException | URISyntaxException e) {
             throw new ServiceException(e);
         }
     }
@@ -107,12 +109,12 @@ public class SutomService {
 
     private Map<Integer, Map<Character, Set<String>>> buildDictionary() {
         final Map<Integer, Map<Character, Set<String>>> dic = new HashMap<>();
-        try (final var words = Files.lines(Paths.get("D:\\dictionary.txt"))) {
+        try (final var words = Files.lines(Paths.get(requireNonNull(getClass().getClassLoader().getResource("dictionary.txt")).toURI()))) {
             words.forEach(word -> dic.computeIfAbsent(word.length(), k -> new HashMap<>())
                     .computeIfAbsent(word.charAt(0), k -> new HashSet<>())
                     .add(word));
             return dic;
-        } catch (final IOException e) {
+        } catch (final IOException | URISyntaxException e) {
             throw new ServiceException(e);
         }
     }
