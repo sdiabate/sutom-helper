@@ -6,8 +6,17 @@ public class SutomApplication {
 
     public static void main(final String[] args) {
         final var scanner = new Scanner(System.in);
+        var option = "";
+        do {
+            performSearch(scanner);
+            System.out.print("\nTapez Entrer pour faire une nouvelle recherche ou Q pour quitter : ");
+            option = scanner.nextLine();
+        } while (!option.equalsIgnoreCase("q"));
+        System.out.println("\nA bientôt pour d'autres aventures");
+    }
 
-        System.out.print("Pattern (ex: A....) : ");
+    private static void performSearch(Scanner scanner) {
+        System.out.print("\nPattern (ex: A....) : ");
         final var pattern = scanner.nextLine();
 
         System.out.print("Caractères inclus (ex: JT) : ");
@@ -24,18 +33,21 @@ public class SutomApplication {
 
         if (pageSize.isEmpty()) {
             final var result = service.search(new SutomRequest(pattern, inclusion, exclusion));
+            if (result.isEmpty()) {
+                System.out.println("Aucun résultat trouvé");
+            }
             result.forEach(System.out::println);
         } else {
             final var result = service.search(new SutomRequest(pattern, inclusion, exclusion), Integer.parseInt(pageSize));
-            result.forEachRemaining(subList -> {
-                subList.forEach(System.out::println);
+            if (!result.hasNext()) {
+                System.out.println("Aucun résultat trouvé");
+            }
+            var option = "";
+            while (result.hasNext() && !option.equalsIgnoreCase("q")) {
+                result.next().forEach(System.out::println);
                 System.out.print("\nTaper Entrer pour continuer ou Q pour quitter : ");
-                final var in = scanner.nextLine();
-                if (in.equalsIgnoreCase("q")) {
-                    System.exit(0);
-                }
-                System.out.println();
-            });
+                option = scanner.nextLine();
+            }
         }
     }
 }
