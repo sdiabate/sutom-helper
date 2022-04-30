@@ -33,6 +33,18 @@ public class SutomService {
         }
     }
 
+    public void extractFullWords() {
+        try (final var lines = Files.lines(Paths.get(requireNonNull(getClass().getClassLoader().getResource("_dictionary_full.txt")).toURI()))) {
+            final var data = lines
+                    .distinct()
+                    .map(word -> Normalizer.normalize(word, Normalizer.Form.NFD).replaceAll("[^\\p{ASCII}]", "").toUpperCase())
+                    .toList();
+            Files.write(Paths.get("dictionary_full.txt"), data);
+        } catch (final IOException | URISyntaxException e) {
+            throw new ServiceException(e);
+        }
+    }
+
     public Iterator<List<String>> search(final SutomRequest request, final int pageSize) {
         if (pageSize <= 0) {
             throw new IllegalArgumentException("Page size must be greater than 0");
@@ -76,23 +88,28 @@ public class SutomService {
     }
 
     private boolean match(final String word, final SutomRequest request) {
-        final var normalizedPattern = request.pattern().replace(".", "\\w");
+        final var pattern = request.pattern();
+        final var normalizedPattern = pattern.replace(".", "\\w");
+        final String complement = complementPattern(word, pattern);
         return word.matches(normalizedPattern)
-                && matchInclusion(word, request.inclusions(), request.pattern())
-                && matchExclusion(word, request.exclusions());
+                && matchInclusion(complement, request.inclusions())
+                && matchExclusion(complement, request.exclusions());
     }
 
-    private boolean matchInclusion(final String word, final String inclusion, final String pattern) {
+    private String complementPattern(final String word, final String pattern) {
+        final var chars = new char[word.length()];
+        for (int i = 0; i < word.length(); i++) {
+            chars[i] = pattern.charAt(i) == word.charAt(i) ? '.' : word.charAt(i);
+        }
+        return new String(chars);
+    }
+
+    private boolean matchInclusion(final String word, final String inclusion) {
         if (inclusion != null) {
-            final var chars = new char[word.length()];
-            for (int i = 0; i < word.length(); i++) {
-                chars[i] = pattern.charAt(i) == word.charAt(i) ? '.' : word.charAt(i);
-            }
-            final var newWord = new String(chars);
             return inclusion.chars()
                     .mapToObj(character -> String.valueOf((char) character))
                     .filter(character -> !character.isEmpty())
-                    .allMatch(newWord::contains);
+                    .allMatch(word::contains);
         }
         return true;
     }
@@ -109,7 +126,7 @@ public class SutomService {
 
     private Map<Integer, Map<Character, Set<String>>> buildDictionary() {
         final Map<Integer, Map<Character, Set<String>>> dic = new HashMap<>();
-        try (final var words = Files.lines(Paths.get(requireNonNull(getClass().getClassLoader().getResource("dictionary.txt")).toURI()))) {
+        try (final var words = Files.lines(Paths.get(requireNonNull(getClass().getClassLoader().getResource("dictionary_full.txt")).toURI()))) {
             words.forEach(word -> dic.computeIfAbsent(word.length(), k -> new HashMap<>())
                     .computeIfAbsent(word.charAt(0), k -> new HashSet<>())
                     .add(word));
